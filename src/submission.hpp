@@ -13,14 +13,16 @@ class Grid {
 private:
   std::size_t rows_;
   std::size_t cols_;
-  std::vector<std::vector<double>> grid_;
+  std::vector<double> grid_;
 
-  bool index_is_valid (std::size_t i, std::size_t j);
-  std::size_t get_rows();
-  std::size_t get_cols();
+  bool index_is_valid (std::size_t i, std::size_t j) const;
+  std::size_t get_rows() const;
+  std::size_t get_cols() const;
   double& get_index(std::size_t i, std::size_t j);
+  double const_get_index(std::size_t i, std::size_t j) const;
   void change_rows(const std::size_t new_rows);
   void change_cols(const std::size_t new_cols);
+  
   
 
   
@@ -29,14 +31,23 @@ public:
 
   double& operator()(std::size_t i, std::size_t j);
   double  operator()(std::size_t i, std::size_t j) const;
+  const std::size_t* get_dims() const;
 };  
 
+inline const std::size_t* Grid::get_dims() const
+{
+	std::size_t rows = this->get_rows();
+	std::size_t cols = this->get_cols();
+	const std::size_t* dims = new std::size_t [2] {rows, cols};
+	return dims;
+}
+
 inline Grid::Grid(std::size_t rows, std::size_t cols)
-	: rows_(rows) , cols_(cols), grid_(rows, std::vector<double>(cols, 0.0))
+	: rows_(rows) , cols_(cols), grid_(rows * cols)
 {}
 
-bool Grid::index_is_valid(std::size_t i, std::size_t j){
-	if (i >= this->get_rows() || i < 0 || j >= this->get_cols() || j < 0)
+inline bool Grid::index_is_valid(std::size_t i, std::size_t j) const{
+	if (i >= this->get_rows() || j >= this->get_cols())
 	{
 		return false;
 	}
@@ -44,29 +55,30 @@ bool Grid::index_is_valid(std::size_t i, std::size_t j){
 
 }
 
-std::size_t Grid::get_rows()
+inline std::size_t Grid::get_rows() const
 {
 	return rows_;
 }
 
-std::size_t Grid::get_cols()
+inline std::size_t Grid::get_cols() const
 {
 	return cols_;
 }
 
 
 
-double& Grid::get_index(std::size_t i, std::size_t j)
+inline double& Grid::get_index(std::size_t i, std::size_t j)
 {
-	return &grid_[i][j];
+	return grid_[i*(this->get_cols()) + j];
+}
+
+inline double Grid::const_get_index(std::size_t i, std::size_t j) const
+{
+	return grid_[(i*this->get_cols()) + j];
 }
 
 inline double& Grid::operator()(std::size_t i, std::size_t j)
 {
-	if (!index_is_valid(i,j))
-	{
-		throw std::out_of_range("Indicies out of range");
-	}
 
 	double& result = this->get_index(i,j);
 	return result;
@@ -74,11 +86,7 @@ inline double& Grid::operator()(std::size_t i, std::size_t j)
 
 inline double Grid::operator()(std::size_t i, std::size_t j) const
 {
-	if (!index_is_valid(i,j))
-	{
-		throw std::out_of_range("Indicies out of range");
-	}
-	double result = get_index(i,j);
+	const double result = this->const_get_index(i,j);
 	return result;
 }
 
@@ -90,10 +98,10 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid);
 
 
 void apply_stencil(const Grid& old_grid, Grid& new_grid)
-{
-	std::size_t rows = old_grid.get_rows();
-	std::size_t cols = old_grid.get_cols();
-	
+{	
+	const std::size_t* dims = old_grid.get_dims();
+	std::size_t rows = *(dims);
+	std::size_t cols = *(dims + 1);
 	for (std::size_t i = 0; i < rows; ++i)
 	{
 		for (std::size_t j = 0; j < cols; ++j)
@@ -108,5 +116,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid)
 			}
 		}
 	}
+	delete[] dims;
+	dims=nullptr;
 	return;
 }
